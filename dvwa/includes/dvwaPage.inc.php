@@ -47,17 +47,14 @@ function dvwa_start_session() {
 	// the security level.
 
 	$security_level = dvwaSecurityLevelGet();
-	if ($security_level == 'impossible') {
-		$httponly = true;
-		$samesite = "Strict";
-	}
-	else {
-		$httponly = false;
-		$samesite = "";
-	}
+
+	// The session cookie is never readable from JavaScript, is not sent on
+	// cross-site sub-requests, and is HTTPS-only whenever HTTPS is used.
+	$httponly = true;
+	$samesite = ($security_level == 'impossible') ? "Strict" : "Lax";
 
 	$maxlifetime = 86400;
-	$secure = false;
+	$secure = dvwaIsHttps();
 	$domain = parse_url($_SERVER['HTTP_HOST'], PHP_URL_HOST);
 
 	/*
@@ -104,6 +101,19 @@ function dvwa_start_session() {
 		session_start(); // otherwise a new one will be generated here
 	}
 }
+
+function dvwaIsHttps() {
+	return ( !empty( $_SERVER['HTTPS'] ) && strtolower( $_SERVER['HTTPS'] ) !== 'off' )
+		|| ( isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) && strtolower( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) === 'https' );
+}
+
+// Secure defaults for every session cookie PHP emits (including sessions
+// started outside dvwa_start_session()).
+ini_set( 'session.use_strict_mode', '1' );
+ini_set( 'session.use_only_cookies', '1' );
+ini_set( 'session.cookie_httponly', '1' );
+ini_set( 'session.cookie_samesite', 'Lax' );
+ini_set( 'session.cookie_secure', dvwaIsHttps() ? '1' : '0' );
 
 if (array_key_exists ("Login", $_POST) && $_POST['Login'] == "Login") {
 	dvwa_start_session();
