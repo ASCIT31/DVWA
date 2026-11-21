@@ -688,4 +688,21 @@ $MYSQL_SERVER     = 'Database host: <em>' . $_DVWA[ 'db_server' ] . '</em>';
 $MYSQL_PORT       = 'Database port: <em>' . $_DVWA[ 'db_port' ] . '</em>';
 // -- END (Setup Functions)
 
+
+// Security response headers --
+// Sent on every page that includes this file (all application pages).
+// Modules that need their own Content-Security-Policy (CSP Bypass lab)
+// replace it later with header().
+if( !headers_sent() ) {
+	header( 'X-Frame-Options: DENY' );
+	header( "Content-Security-Policy: frame-ancestors 'none'; object-src 'none'; base-uri 'self'" );
+	header( 'X-Content-Type-Options: nosniff' );
+	header( 'Referrer-Policy: strict-origin-when-cross-origin' );
+	header( 'Permissions-Policy: camera=(), microphone=(), geolocation=()' );
+	if( ( !empty( $_SERVER[ 'HTTPS' ] ) && strtolower( $_SERVER[ 'HTTPS' ] ) !== 'off' ) ) {
+		header( 'Strict-Transport-Security: max-age=31536000; includeSubDomains' );
+	}
+}
+// -- END (Security response headers)
+
 ?>
