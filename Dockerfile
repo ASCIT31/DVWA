@@ -1,10 +1,17 @@
-FROM docker.io/library/php:8-apache
+# Supported PHP branch (8.4, security support until end of 2028). The floating
+# 8.4 tag receives patch releases; the build fails if the image is older than
+# 8.4.27, the first 8.4 release fixing PHP2Shell (CVE-2026-109618/109619).
+FROM docker.io/library/php:8.4-apache
 
 LABEL org.opencontainers.image.source=https://github.com/digininja/DVWA
 LABEL org.opencontainers.image.description="DVWA pre-built image."
 LABEL org.opencontainers.image.licenses="gpl-3.0"
 
 WORKDIR /var/www/html
+
+RUN php -r 'exit(version_compare(PHP_VERSION, "8.4.27", ">=") ? 0 : 1);' \
+ || (echo "PHP $(php -r 'echo PHP_VERSION;') is too old: 8.4.27 or later is required" >&2 && exit 1)
+COPY docker/php/zz-dvwa-security.ini /usr/local/etc/php/conf.d/zz-dvwa-security.ini
 
 # https://www.php.net/manual/en/image.installation.php
 RUN apt-get update \
