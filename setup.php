@@ -3,7 +3,41 @@
 define( 'DVWA_WEB_PAGE_TO_ROOT', '' );
 require_once DVWA_WEB_PAGE_TO_ROOT . 'dvwa/includes/dvwaPage.inc.php';
 
-dvwaPageStartup( array( ) );
+/*
+ * Before the database exists, setup.php must be reachable to install DVWA.
+ * Once it is installed, setup/reset (and the environment details shown on
+ * this page) is restricted to the authenticated administrator.
+ */
+function dvwaSetupDatabaseInstalled() {
+	global $_DVWA, $DBMS;
+
+	if( $DBMS != 'MySQL' ) {
+		return false;
+	}
+	try {
+		$link = @mysqli_connect( $_DVWA[ 'db_server' ], $_DVWA[ 'db_user' ], $_DVWA[ 'db_password' ], '', $_DVWA[ 'db_port' ] );
+		if( !$link ) {
+			return false;
+		}
+		$installed = @mysqli_select_db( $link, $_DVWA[ 'db_database' ] )
+			&& ( @mysqli_query( $link, 'SELECT 1 FROM users LIMIT 1' ) !== false );
+		mysqli_close( $link );
+		return $installed;
+	} catch( Throwable $e ) {
+		return false;
+	}
+}
+
+if( dvwaSetupDatabaseInstalled() ) {
+	dvwaPageStartup( array( 'authenticated' ) );
+	if( dvwaCurrentUser() !== 'admin' ) {
+		dvwaMessagePush( 'Only the administrator can reset the database.' );
+		dvwaRedirect( DVWA_WEB_PAGE_TO_ROOT . 'index.php' );
+	}
+}
+else {
+	dvwaPageStartup( array( ) );
+}
 
 $page = dvwaPageNewGrab();
 $page[ 'title' ]   = 'Setup' . $page[ 'title_separator' ].$page[ 'title' ];
@@ -102,7 +136,8 @@ $page[ 'body' ] .= "
 	If you get an error make sure you have the correct user credentials in: <em>" . realpath(  getcwd() . DIRECTORY_SEPARATOR . "config" . DIRECTORY_SEPARATOR . "config.inc.php" ) . "</em></p>
 
 	<p>If the database already exists, <em>it will be cleared and the data will be reset</em>.<br />
-	You can also use this to reset the administrator credentials (\"<em>admin</em> // <em>password</em>\") at any stage.</p>
+	A new random password is generated for the administrator account (<em>admin</em>) every time the database is created or reset.<br />
+	It is displayed once, right after setup: store it then.</p>
 	<hr />
 	<br />
 

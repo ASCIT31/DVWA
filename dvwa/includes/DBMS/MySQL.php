@@ -51,8 +51,12 @@ dvwaMessagePush( "'users' table was created." );
 $base_dir= str_replace ("setup.php", "", $_SERVER['SCRIPT_NAME']);
 $avatarUrl  = $base_dir . 'hackable/users/';
 
+// No well-known default administrator password: generate a random one
+// (128 bits, hex so it is safe inside the SQL literal) and show it once.
+$admin_password = bin2hex( random_bytes( 16 ) );
+
 $insert = "INSERT INTO users (user_id, first_name, last_name, user, password, avatar, last_login, failed_login) VALUES
-	('1','admin','admin','admin',MD5('password'),'{$avatarUrl}admin.jpg', NOW(), '0'),
+	('1','admin','admin','admin',MD5('{$admin_password}'),'{$avatarUrl}admin.jpg', NOW(), '0'),
 	('2','Gordon','Brown','gordonb',MD5('abc123'),'{$avatarUrl}gordonb.jpg', NOW(), '0'),
 	('3','Hack','Me','1337',MD5('charley'),'{$avatarUrl}1337.jpg', NOW(), '0'),
 	('4','Pablo','Picasso','pablo',MD5('letmein'),'{$avatarUrl}pablo.jpg', NOW(), '0'),
@@ -134,9 +138,10 @@ dvwaMessagePush( "Backup file /config/config.inc.php.bak automatically created" 
 
 // Done
 dvwaMessagePush( "<em>Setup successful</em>!" );
+dvwaMessagePush( "Administrator account: <em>admin</em> / <em>{$admin_password}</em><br />This password is shown only once: store it now." );
 
 if( !dvwaIsLoggedIn())
-    dvwaMessagePush( "Please <a href='login.php'>login</a>.<script>setTimeout(function(){window.location.href='login.php'},5000);</script>" );
+    dvwaMessagePush( "Then <a href='login.php'>login</a> with these credentials." );
 dvwaPageReload();
 
 ?>
