@@ -31,12 +31,6 @@ switch( dvwaSecurityLevelGet() ) {
 
 require_once DVWA_WEB_PAGE_TO_ROOT . "vulnerabilities/xss_d/source/{$vulnerabilityFile}";
 
-# For the impossible level, don't decode the querystring
-$decodeURI = "decodeURI";
-if ($vulnerabilityFile == 'impossible.php') {
-	$decodeURI = "";
-}
-
 $page[ 'body' ] = <<<EOF
 <div class="body_padded">
 	<h1>Vulnerability: DOM Based Cross Site Scripting (XSS)</h1>
@@ -46,20 +40,32 @@ $page[ 'body' ] = <<<EOF
  		<p>Please choose a language:</p>
 
 		<form name="XSS" method="GET">
-			<select name="default">
-				<script>
-					if (document.location.href.indexOf("default=") >= 0) {
-						var lang = document.location.href.substring(document.location.href.indexOf("default=")+8);
-						document.write("<option value='" + lang + "'>" + $decodeURI(lang) + "</option>");
-						document.write("<option value='' disabled='disabled'>----</option>");
+			<select name="default" id="dvwa_language"></select>
+			<script>
+				(function () {
+					// Read the parameter from the query string only (never from the
+					// #fragment), accept only known languages and build the options
+					// with DOM APIs + textContent instead of document.write().
+					var allowed = ["English", "French", "Spanish", "German"];
+					var select = document.getElementById("dvwa_language");
+					var lang = new URLSearchParams(window.location.search).get("default");
+
+					function addOption(value, label, disabled) {
+						var option = document.createElement("option");
+						option.value = value;
+						option.textContent = label;
+						option.disabled = !!disabled;
+						select.appendChild(option);
 					}
-					    
-					document.write("<option value='English'>English</option>");
-					document.write("<option value='French'>French</option>");
-					document.write("<option value='Spanish'>Spanish</option>");
-					document.write("<option value='German'>German</option>");
-				</script>
-			</select>
+
+					if (lang !== null && allowed.indexOf(lang) !== -1) {
+						addOption(lang, lang, false);
+						addOption("", "----", true);
+					}
+
+					allowed.forEach(function (l) { addOption(l, l, false); });
+				})();
+			</script>
 			<input type="submit" value="Select" />
 		</form>
 	</div>
