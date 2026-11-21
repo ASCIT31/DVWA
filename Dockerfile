@@ -17,6 +17,11 @@ RUN apt-get update \
  && docker-php-ext-install gd mysqli pdo pdo_mysql
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+# Apache hardening: no version banner, no directory listing, no access to
+# config/, database/ or backup files
+COPY docker/apache/dvwa-hardening.conf /etc/apache2/conf-available/zz-dvwa-hardening.conf
+RUN a2enconf zz-dvwa-hardening
 COPY --chown=www-data:www-data . .
 COPY --chown=www-data:www-data config/config.inc.php.dist config/config.inc.php
 
