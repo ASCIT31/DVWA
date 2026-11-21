@@ -613,14 +613,9 @@ function dvwaGuestbook() {
 	$guestbook = '';
 
 	while( $row = mysqli_fetch_row( $result ) ) {
-		if( dvwaSecurityLevelGet() == 'impossible' ) {
-			$name    = htmlspecialchars( $row[0] );
-			$comment = htmlspecialchars( $row[1] );
-		}
-		else {
-			$name    = $row[0];
-			$comment = $row[1];
-		}
+		// Always encode stored data on output, whatever the security level
+		$name    = htmlspecialchars( $row[0], ENT_QUOTES, 'UTF-8' );
+		$comment = htmlspecialchars( $row[1], ENT_QUOTES, 'UTF-8' );
 
 		$guestbook .= "<div id=\"guestbook_comments\">Name: {$name}<br />" . "Message: {$comment}<br /></div>\n";
 	}
