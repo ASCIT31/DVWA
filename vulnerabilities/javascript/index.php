@@ -29,6 +29,16 @@ switch( dvwaSecurityLevelGet() ) {
 		break;
 }
 
+// Low level: the token is an HMAC computed on the server with a per-session
+// secret that is never sent to the browser, so it cannot be recomputed
+// client-side for another phrase.
+if( !isset( $_SESSION[ 'javascript_token_key' ] ) ) {
+	$_SESSION[ 'javascript_token_key' ] = bin2hex( random_bytes( 32 ) );
+}
+function dvwaJavascriptToken( $phrase ) {
+	return hash_hmac( 'sha256', (string) $phrase, $_SESSION[ 'javascript_token_key' ] );
+}
+
 $message = "";
 // Check what was sent in to see if it was what was expected
 if ($_SERVER['REQUEST_METHOD'] == "POST") {
@@ -40,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == "POST") {
 		if ($phrase == "success") {
 			switch( dvwaSecurityLevelGet() ) {
 				case 'low':
-					if ($token == md5(str_rot13("success"))) {
+					if (is_string($token) && hash_equals(dvwaJavascriptToken("success"), $token)) {
 						$message = "<p style='color:red'>Well done!</p>";
 					} else {
 						$message = "<p>Invalid token.</p>";
