@@ -176,6 +176,47 @@ function dvwaCurrentUser() {
 
 // -- END (Session functions)
 
+// Password storage functions --
+
+// New passwords are stored with password_hash() (bcrypt by default: salted,
+// adaptive cost) instead of unsalted MD5.
+function dvwaPasswordHash( $pPassword ) {
+	return password_hash( (string) $pPassword, PASSWORD_DEFAULT );
+}
+
+// Verifies a password against its stored hash. Legacy unsalted MD5 hashes
+// (32 hex chars) are still accepted so existing databases keep working, and
+// are upgraded by dvwaPasswordUpgradeIfLegacy() on the next successful login.
+function dvwaPasswordVerify( $pPassword, $pStoredHash ) {
+	$pStoredHash = (string) $pStoredHash;
+	if( preg_match( '/^[a-f0-9]{32}$/i', $pStoredHash ) ) {
+		return hash_equals( strtolower( $pStoredHash ), md5( (string) $pPassword ) );
+	}
+	return password_verify( (string) $pPassword, $pStoredHash );
+}
+
+function dvwaPasswordNeedsRehash( $pStoredHash ) {
+	$pStoredHash = (string) $pStoredHash;
+	return preg_match( '/^[a-f0-9]{32}$/i', $pStoredHash ) || password_needs_rehash( $pStoredHash, PASSWORD_DEFAULT );
+}
+
+// Re-hash a legacy MD5 password after a successful verification.
+function dvwaPasswordUpgradeIfLegacy( $pUser, $pPassword, $pStoredHash ) {
+	if( !dvwaPasswordNeedsRehash( $pStoredHash ) || !isset( $GLOBALS[ "___mysqli_ston" ] ) ) {
+		return;
+	}
+	$stmt = mysqli_prepare( $GLOBALS[ "___mysqli_ston" ], 'UPDATE users SET password = ? WHERE user = ? LIMIT 1' );
+	if( $stmt ) {
+		$hash = dvwaPasswordHash( $pPassword );
+		$user = (string) $pUser;
+		mysqli_stmt_bind_param( $stmt, 'ss', $hash, $user );
+		mysqli_stmt_execute( $stmt );
+		mysqli_stmt_close( $stmt );
+	}
+}
+
+// -- END (Password storage functions)
+
 function &dvwaPageNewGrab() {
 	$returnArray = array(
 		'title'           => 'Damn Vulnerable Web Application (DVWA)',
