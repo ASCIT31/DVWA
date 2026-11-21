@@ -3,11 +3,17 @@
 $html = "";
 
 if ($_SERVER['REQUEST_METHOD'] == "POST") {
-	if (!isset ($_SESSION['last_session_id'])) {
-		$_SESSION['last_session_id'] = 0;
-	}
-	$_SESSION['last_session_id']++;
-	$cookie_value = $_SESSION['last_session_id'];
-	setcookie("dvwaSession", $cookie_value);
+	// 160 bits from the CSPRNG: unpredictable, not derived from a counter,
+	// time or any other guessable value.
+	$cookie_value = bin2hex(random_bytes(20));
+
+	$https = ( !empty( $_SERVER['HTTPS'] ) && strtolower( $_SERVER['HTTPS'] ) !== 'off' );
+	setcookie("dvwaSession", $cookie_value, [
+		'expires'  => time() + 3600,
+		'path'     => '/vulnerabilities/weak_id/',
+		'secure'   => $https,
+		'httponly' => true,
+		'samesite' => 'Strict',
+	]);
 }
 ?>
