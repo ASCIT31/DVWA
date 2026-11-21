@@ -39,7 +39,7 @@ if( !@((bool)mysqli_query($GLOBALS["___mysqli_ston"], "USE " . $_DVWA[ 'db_datab
 	dvwaPageReload();
 }
 
-$create_tb = "CREATE TABLE users (user_id int(6),first_name varchar(15),last_name varchar(15), user varchar(15), password varchar(32),avatar varchar(70), last_login TIMESTAMP, failed_login INT(3), role VARCHAR(20) DEFAULT 'user', account_enabled TINYINT(1) DEFAULT 1, PRIMARY KEY (user_id));";
+$create_tb = "CREATE TABLE users (user_id int(6),first_name varchar(15),last_name varchar(15), user varchar(15), password varchar(255),avatar varchar(70), last_login TIMESTAMP, failed_login INT(3), role VARCHAR(20) DEFAULT 'user', account_enabled TINYINT(1) DEFAULT 1, PRIMARY KEY (user_id));";
 if( !mysqli_query($GLOBALS["___mysqli_ston"],  $create_tb ) ) {
 	dvwaMessagePush( "Table could not be created<br />SQL: " . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) );
 	dvwaPageReload();
@@ -51,12 +51,18 @@ dvwaMessagePush( "'users' table was created." );
 $base_dir= str_replace ("setup.php", "", $_SERVER['SCRIPT_NAME']);
 $avatarUrl  = $base_dir . 'hackable/users/';
 
+// Passwords are stored as salted bcrypt hashes (password_hash), never MD5
+$hash = array();
+foreach( array( 'admin' => 'password', 'gordonb' => 'abc123', '1337' => 'charley', 'pablo' => 'letmein', 'smithy' => 'password' ) as $seed_user => $seed_pass ) {
+	$hash[ $seed_user ] = mysqli_real_escape_string( $GLOBALS["___mysqli_ston"], dvwaPasswordHash( $seed_pass ) );
+}
+
 $insert = "INSERT INTO users (user_id, first_name, last_name, user, password, avatar, last_login, failed_login) VALUES
-	('1','admin','admin','admin',MD5('password'),'{$avatarUrl}admin.jpg', NOW(), '0'),
-	('2','Gordon','Brown','gordonb',MD5('abc123'),'{$avatarUrl}gordonb.jpg', NOW(), '0'),
-	('3','Hack','Me','1337',MD5('charley'),'{$avatarUrl}1337.jpg', NOW(), '0'),
-	('4','Pablo','Picasso','pablo',MD5('letmein'),'{$avatarUrl}pablo.jpg', NOW(), '0'),
-	('5','Bob','Smith','smithy',MD5('password'),'{$avatarUrl}smithy.jpg', NOW(), '0');";
+	('1','admin','admin','admin','{$hash['admin']}','{$avatarUrl}admin.jpg', NOW(), '0'),
+	('2','Gordon','Brown','gordonb','{$hash['gordonb']}','{$avatarUrl}gordonb.jpg', NOW(), '0'),
+	('3','Hack','Me','1337','{$hash['1337']}','{$avatarUrl}1337.jpg', NOW(), '0'),
+	('4','Pablo','Picasso','pablo','{$hash['pablo']}','{$avatarUrl}pablo.jpg', NOW(), '0'),
+	('5','Bob','Smith','smithy','{$hash['smithy']}','{$avatarUrl}smithy.jpg', NOW(), '0');";
 if( !mysqli_query($GLOBALS["___mysqli_ston"],  $insert ) ) {
 	dvwaMessagePush( "Data could not be inserted into 'users' table<br />SQL: " . ((is_object($GLOBALS["___mysqli_ston"])) ? mysqli_error($GLOBALS["___mysqli_ston"]) : (($___mysqli_res = mysqli_connect_error()) ? $___mysqli_res : false)) );
 	dvwaPageReload();
