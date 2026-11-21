@@ -129,7 +129,49 @@ function &dvwaSessionGrab() {
 }
 
 
+// Returns true when $pIp belongs to the CIDR range $pCidr (IPv4 or IPv6).
+function dvwaIpInCidr( $pIp, $pCidr ) {
+	$parts  = explode( '/', trim( $pCidr ), 2 );
+	$subnet = @inet_pton( $parts[0] );
+	$ip     = @inet_pton( $pIp );
+	if( $subnet === false || $ip === false || strlen( $subnet ) !== strlen( $ip ) ) {
+		return false;
+	}
+	$bits = isset( $parts[1] ) ? (int) $parts[1] : strlen( $ip ) * 8;
+	$bytes = intdiv( $bits, 8 );
+	if( substr( $ip, 0, $bytes ) !== substr( $subnet, 0, $bytes ) ) {
+		return false;
+	}
+	$remaining = $bits % 8;
+	if( $remaining === 0 ) {
+		return true;
+	}
+	$mask = chr( ( 0xFF << ( 8 - $remaining ) ) & 0xFF );
+	return ( $ip[ $bytes ] & $mask ) === ( $subnet[ $bytes ] & $mask );
+}
+
+// Refuse to serve DVWA to clients outside the configured trusted networks.
+function dvwaEnforceNetworkAllowlist() {
+	global $_DVWA;
+
+	$networks = isset( $_DVWA[ 'allowed_networks' ] ) ? $_DVWA[ 'allowed_networks' ]
+		: '127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7';
+	$client = isset( $_SERVER[ 'REMOTE_ADDR' ] ) ? $_SERVER[ 'REMOTE_ADDR' ] : '';
+	if( $client === '' && PHP_SAPI === 'cli' ) {
+		return;
+	}
+	foreach( explode( ',', $networks ) as $cidr ) {
+		if( trim( $cidr ) !== '' && dvwaIpInCidr( $client, $cidr ) ) {
+			return;
+		}
+	}
+	header( ( isset( $_SERVER[ 'SERVER_PROTOCOL' ] ) ? $_SERVER[ 'SERVER_PROTOCOL' ] : 'HTTP/1.1' ) . ' 403 Forbidden' );
+	exit( 'Access to DVWA is restricted to trusted networks.' );
+}
+
 function dvwaPageStartup( $pActions ) {
+	dvwaEnforceNetworkAllowlist();
+
 	if (in_array('authenticated', $pActions)) {
 		if( !dvwaIsLoggedIn()) {
 			dvwaRedirect( DVWA_WEB_PAGE_TO_ROOT . 'login.php' );
